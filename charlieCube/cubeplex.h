@@ -559,7 +559,7 @@ void flushBuffer() {
 */
 
 /*
-|Modified by INDOPALTA
+|Modified by Paulus
 */
   if (_cube_buffer[  0] != 0)flushElement(copy_frame,16, 4,_cube_buffer[  0]);
   if (_cube_buffer[  1] != 0)flushElement(copy_frame,12,16,_cube_buffer[  1]);
@@ -780,15 +780,8 @@ ISR(TIMER2_OVF_vect) {
   pin2 = pin2&0x0F;
   PORTB = 0x00;
   PORTC = 0x00;
-  PORTD = 0x00|1<<2;
+  PORTD = 0x00|1<<2; //this is to make sure int0 always pull up (paulus)
   if (count > pwmm){
-    /*
-    if(turningOff){
-      DDRD = pinsD[pin1] | pinsD[pin2] | (1<<2);
-    }else{
-      DDRD = pinsD[pin1] | pinsD[pin2];
-    }
-    */
     DDRD = pinsD[pin1] | pinsD[pin2];
     DDRB = pinsB[pin1] | pinsB[pin2];
     DDRC = pinsC[pin1] | pinsC[pin2];

@@ -44,6 +44,13 @@
 | ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE   |
 | POSSIBILITY OF SUCH DAMAGE.                                                  |
 \******************************************************************************/
+
+/**
+ * Modified by Paulus Tanuri
+ * Last updated at June 2020
+ * https://www.youtube.com/user/ptanuri
+ */
+ 
 #include <avr/sleep.h>
 #include "cubeplex.h"
 
@@ -58,9 +65,10 @@ int tunnelLoop        = 100;
 int chaseTheDotLoop   = 400;
 int planarFlop3DLoop  = 100;
 unsigned long startMillis = 0;
-long AutoOffTime = 7200000;//2hour
+long AutoOffTime = 7200000;//in milliseconds
 int powerButtonPin = 2;
-bool enableDebug = false;
+bool enableDebug = false;//set to true if you want to do debugging to serial monitor
+
 
 byte _SMCR = SMCR;;
 byte _MCUCR = SMCR;;
@@ -78,7 +86,8 @@ void setup() {
   enableTimer1CompareAInterrupt();
   startMillis = millis();
   randomSeed(analogRead(A5));
-  an = random(6);
+  //an = random(6);
+  an = 0;
   startPowerInterrupt();
 }
 void loop() {
@@ -110,11 +119,24 @@ void startPowerInterrupt(){
 }
 
 void powerButtonPressed(){
+  debug("continuePattern is : " + String(continuePattern));
+  debug("animation no : " + String(an));
+  detachInterrupt(digitalPinToInterrupt(powerButtonPin));
+  continuePattern = false;
+  animationTimer = 0;
+  flushBuffer();
+  clearBuffer();
+  debug("continuePattern is : " + String(continuePattern));
+  startPowerInterrupt();
+  /**
+  //you can use this parts if you want to go to sleep on button press
   if(!turningOff){
-    detachInterrupt(digitalPinToInterrupt(powerButtonPin));
+    turningOff = true;
+    
     debug("powerButtonPressed");
     turnMeOff();
   }
+  */
 }
 
 void checkTimerAndInput(){
@@ -126,8 +148,8 @@ void checkTimerAndInput(){
 
 void turnMeOff(){
   debug("turnMeOff");
-  detachInterrupt(digitalPinToInterrupt(powerButtonPin));
   turningOff = true;
+  detachInterrupt(digitalPinToInterrupt(powerButtonPin));
   continuePattern = false;
   flushBuffer();
   clearBuffer();
@@ -135,7 +157,7 @@ void turnMeOff(){
   PORTB = 0x00;
   PORTC = 0x00;
   PORTD = 0x00|1<<2;
-  delay(500);
+  delay(100);
   gotoSleep();
 }
 
@@ -155,11 +177,11 @@ void gotoSleep(){
 
 void wakeUp(){
   if(turningOff){
+    turningOff = false;
     sleep_disable();
     detachInterrupt(digitalPinToInterrupt(powerButtonPin));
     ADCSRA = _ADCSRA;
-    turningOff = false;
-    delay(500);
+    delay(100);
     startPowerInterrupt();
     startTimers();
   }
@@ -185,7 +207,9 @@ void playAnimation(int n){
 | Written By: Asher Glick                                                      |
 \******************************************************************************/
 void planarSpin() {
+  debug("starting : planarSpin");
   continuePattern = true;
+  animationTimer = 0;
   int animationSpeed = 50;
   int spinsPerColor = 5; // a spin is actually half a revolution
   int currentLoop = 0;
@@ -201,6 +225,7 @@ void planarSpin() {
         drawLine(color,x,0,3,3-x,3,3);
         flushBuffer();
         clearBuffer();
+        if(!continuePattern)break;//immediately break loop
         delay(animationSpeed);
       }
       for (int y = 0; y < 3; y++) {
@@ -210,12 +235,16 @@ void planarSpin() {
         drawLine(color,3,y,3,0,3-y,3);
         flushBuffer();
         clearBuffer();
+        if(!continuePattern)break;//immediately break loop
         delay(animationSpeed);
       }
     }
     color = nextColor(color);
     currentLoop++;
-    continuePattern = (currentLoop < maxLoop);
+    debug("continuePattern here is : " + String(continuePattern));
+    if(continuePattern){//must add this checking so we can set it to false from other places (paulus)
+      continuePattern = (currentLoop < maxLoop);
+    }
   }
 }
 
@@ -227,7 +256,9 @@ void planarSpin() {
 | Written By: Asher Glick                                                      |
 \******************************************************************************/
 void fountian() {
+  debug("starting : fountian");
   continuePattern = true;
+  animationTimer = 0;
   int animationSpeed = 100;
   int currentLoop = 0;
   int maxLoop = fountianLoop;
@@ -236,17 +267,22 @@ void fountian() {
       drawBoxWalls(color,1,1,z,2,2,z);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
     for (int z = 3; z >= 0; z--) {
       drawBoxWalls(color,0,0,z,3,3,z);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
     color=nextColor(color);
     currentLoop++;
-    continuePattern = (currentLoop < maxLoop);
+    debug("continuePattern here is : " + String(continuePattern));
+    if(continuePattern){//must add this checking so we can set it to false from other places (paulus)
+      continuePattern = (currentLoop < maxLoop);
+    }
   }
 }
 
@@ -257,7 +293,9 @@ void fountian() {
 | Written By: Asher Glick                                                      |
 \******************************************************************************/
 void trifade() {
+  debug("starting : trifade");
   continuePattern = true;
+  animationTimer = 0;
   int animationSpeed = 100;
   int currentLoop = 0;
   int maxLoop = trifadeLoop;
@@ -268,6 +306,7 @@ void trifade() {
       drawBox(red,i,0,0,0,3,3,3);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
     // red fade out, green fade in
@@ -276,6 +315,7 @@ void trifade() {
       drawBox(green,i,0,0,0,3,3,3);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
     // green fade out, blue fade in
@@ -284,10 +324,14 @@ void trifade() {
       drawBox(blue,i,0,0,0,3,3,3);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
     currentLoop++;
-    continuePattern = (currentLoop < maxLoop);
+    debug("continuePattern here is : " + String(continuePattern));
+    if(continuePattern){//must add this checking so we can set it to false from other places (paulus)
+      continuePattern = (currentLoop < maxLoop);
+    }
   }
 }
 
@@ -300,6 +344,7 @@ void trifade() {
 | Written By: Asher Glick                                                      |
 \******************************************************************************/
 void shiftSquares() {
+  debug("starting : shiftSquares");
   int animationSpeed = 100;
   
   int blx = 2; // blue x
@@ -316,6 +361,7 @@ void shiftSquares() {
   
   int * mover = &blx;
   continuePattern = true;
+  animationTimer = 0;
   int currentLoop = 0;
   int maxLoop = shiftSquaresLoop;
   while(continuePattern) {
@@ -346,7 +392,10 @@ void shiftSquares() {
     delay(animationSpeed*2);
     
     currentLoop++;
-    continuePattern = (currentLoop < maxLoop);
+    debug("continuePattern here is : " + String(continuePattern));
+    if(continuePattern){//must add this checking so we can set it to false from other places (paulus)
+      continuePattern = (currentLoop < maxLoop);
+    }
   }
 }
 
@@ -354,7 +403,9 @@ void shiftSquares() {
 |
 \******************************************************************************/
 void tunnel() {
+  debug("starting : tunnel");
   continuePattern = true;
+  animationTimer = 0;
   int animationSpeed =100;
   int currentLoop = 0;
   int maxLoop = tunnelLoop;
@@ -395,7 +446,10 @@ void tunnel() {
     }
     delay(animationSpeed);
     currentLoop++;
-    continuePattern = (currentLoop < maxLoop);
+    debug("continuePattern here is : " + String(continuePattern));
+    if(continuePattern){//must add this checking so we can set it to false from other places (paulus)
+      continuePattern = (currentLoop < maxLoop);
+    }
   }
 }
 /******************************** CHASE THE DOT *******************************\
@@ -406,7 +460,9 @@ void tunnel() {
 | Written By: Asher Glick                                                      |
 \******************************************************************************/
 void chaseTheDot() {
+  debug("starting : chaseTheDot");
   continuePattern = true;
+  animationTimer = 0;
   int animationSpeed = 100;
   
   int xpos = 0;
@@ -445,7 +501,10 @@ void chaseTheDot() {
     clearBuffer();
     delay(animationSpeed);
     currentLoop++;
-    continuePattern = (currentLoop < maxLoop);
+    debug("continuePattern here is : " + String(continuePattern));
+    if(continuePattern){//must add this checking so we can set it to false from other places (paulus)
+      continuePattern = (currentLoop < maxLoop);
+    }
   }
 }
 /********************************* PLANAR FLOP ********************************\
@@ -456,7 +515,9 @@ void chaseTheDot() {
 | 'n stuff. Making this function found the bug of reversed z axis line drawing |
 \******************************************************************************/
 void planarFlop3D() {
+  debug("starting : planarFlop3D");
   continuePattern = true;
+  animationTimer = 0;
   int animationSpeed = 50;
   int currentLoop = 0;
   int maxLoop = planarFlop3DLoop;
@@ -466,82 +527,101 @@ void planarFlop3D() {
       for (int z = 0; z < 4; z++) drawLine(color,0,3,z,3,y,z);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
+    if(!continuePattern)break;//immediately break loop
     for (int x = 3; x > 0; x--) {
       for (int z = 0; z < 4; z++) drawLine(color,0,3,z,x,0,z);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
     
-    
+    if(!continuePattern)break;//immediately break loop
     for (int x = 0; x < 3; x++) {
       for (int y = 0; y < 4; y++) drawLine(color,0,y,0,x,y,3);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
+    if(!continuePattern)break;//immediately break loop
     for (int z = 3; z > 0; z--) {
       for (int y = 0; y < 4; y++) drawLine(color,0,y,0,3,y,z);
       flushBuffer();
       clearBuffer();
       delay(animationSpeed);
     }
-    
+    if(!continuePattern)break;//immediately break loop
     for (int z = 0; z < 3; z++) {
       for (int x = 0; x < 4; x++) drawLine(color,x,0,0,x,3,z);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
+    if(!continuePattern)break;//immediately break loop
     for (int y = 3; y > 0; y--) {
       for (int x = 0; x < 4; x++) drawLine(color,x,0,0,x,y,3);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
-    
+    if(!continuePattern)break;//immediately break loop
     for (int y = 0; y < 3; y++) {
       for (int z = 0; z < 4; z++) drawLine(color,3,0,z,0,y,z);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
+    if(!continuePattern)break;//immediately break loop
     for (int x = 0; x < 3; x++) {
       for (int z = 0; z < 4; z++) drawLine(color,3,0,z,x,3,z);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
-    
+    if(!continuePattern)break;//immediately break loop
     for (int x = 3; x > 0; x--) {
       for (int y = 0; y < 4; y++) drawLine(color,3,y,3,x,y,0);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
+    if(!continuePattern)break;//immediately break loop
     for (int z = 0; z < 3; z++) {
       for (int y = 0; y < 4; y++) drawLine(color,3,y,3,0,y,z);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
-    
+    if(!continuePattern)break;//immediately break loop
     for (int z = 3; z > 0; z--) {
       for (int x = 0; x < 4; x++) drawLine(color,x,3,3,x,0,z);
       flushBuffer();
       clearBuffer();
       delay(animationSpeed);
-    } 
+    }
+    if(!continuePattern)break;//immediately break loop 
     for (int y = 0; y < 3; y++) {
       for (int x = 0; x < 4; x++) drawLine(color,x,3,3,x,y,0);
       flushBuffer();
       clearBuffer();
+      if(!continuePattern)break;//immediately break loop
       delay(animationSpeed);
     }
     color = nextColor(color);
     currentLoop++;
-    continuePattern = (currentLoop < maxLoop);
+    debug("continuePattern here is : " + String(continuePattern));
+    if(continuePattern){//must add this checking so we can set it to false from other places (paulus)
+      continuePattern = (currentLoop < maxLoop);
+    }
   }
 }
