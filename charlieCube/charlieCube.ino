@@ -181,6 +181,7 @@ void wakeUp(){
     sleep_disable();
     detachInterrupt(digitalPinToInterrupt(powerButtonPin));
     ADCSRA = _ADCSRA;
+    startMillis = millis();
     delay(100);
     startPowerInterrupt();
     startTimers();
