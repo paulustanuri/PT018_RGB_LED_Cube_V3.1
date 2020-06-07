@@ -6,4 +6,6 @@ This project actually a remake of Asher Glick's Charliecube. His original versio
 I made the custom board and kits for this project, based on his works. 
 At this version I remove the softlatch circuit and try to use Sleep fitur with it.
 
+Wiki is available at : https://www.indopalta.net/wiki/en/index.php/LED_Cube_RGB_4x4x4
+
 Video for this project is available at : https://youtu.be/6L-2932VH88
